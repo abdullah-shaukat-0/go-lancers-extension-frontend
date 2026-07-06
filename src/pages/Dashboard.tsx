@@ -137,7 +137,19 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
+    <div className="animate-fade-in page-shell">
+      <div className="glass-panel" style={{ padding: "22px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
+            <Heart size={18} style={{ color: "var(--accent-secondary)" }} />
+            <h2 style={{ fontSize: "1.1rem" }}>Operations Snapshot</h2>
+          </div>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+            A clear overview of admissions, care activity, and hospital performance at a glance.
+          </p>
+        </div>
+        <span className="badge badge-info">{isAdmin ? "Admin view" : isDoctor ? "Doctor view" : isNurse ? "Nurse view" : "Patient view"}</span>
+      </div>
 
       {/* ─── Stat Cards Grid ─────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "20px" }}>
