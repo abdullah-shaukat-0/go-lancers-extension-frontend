@@ -14,6 +14,7 @@ import {
   FileText,
   CheckCircle2,
   Clock,
+  FlaskConical,
 } from "lucide-react";
 
 interface PatientNotification {
@@ -30,6 +31,18 @@ interface PatientNotification {
   isEmailSent: boolean;
 }
 
+interface LabResult {
+  id: number;
+  testName: string;
+  orderedBy?: string;
+  resultValue?: string;
+  unit?: string;
+  referenceRange?: string;
+  status: string;
+  resultDate: string;
+  notes?: string;
+}
+
 const TYPE_CONFIG: Record<string, { icon: React.ReactNode; color: string; bg: string; border: string; label: string }> = {
   Precaution: { icon: <AlertTriangle size={14} />, color: "#f97316", bg: "rgba(249,115,22,0.1)", border: "rgba(249,115,22,0.25)", label: "💊 Precaution" },
   Checkup:    { icon: <Calendar size={14} />, color: "#6366f1", bg: "rgba(99,102,241,0.1)", border: "rgba(99,102,241,0.25)", label: "📅 Checkup Reminder" },
@@ -42,10 +55,11 @@ export const PatientPortal: React.FC = () => {
 
   const [patient, setPatient] = useState<any>(null);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [labResults, setLabResults] = useState<LabResult[]>([]);
   const [notifications, setNotifications] = useState<PatientNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [expandedNotifId, setExpandedNotifId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<"records" | "inbox">("inbox");
+  const [activeTab, setActiveTab] = useState<"records" | "labs" | "inbox">("inbox");
 
   // Edit mode
   const [isEditing, setIsEditing] = useState(false);
@@ -74,6 +88,23 @@ export const PatientPortal: React.FC = () => {
 
       const appointments = await request(`/appointments?patientId=${user?.profileId}`);
       setPrescriptions(appointments.filter((app: any) => (app.status || app.Status).toLowerCase() === "completed"));
+
+      try {
+        const labs = await request(`/labresults?patientId=${user?.profileId}`);
+        setLabResults(labs.map((lab: any) => ({
+          id: lab.id || lab.Id,
+          testName: lab.testName || lab.TestName || lab.name || lab.Name || "Lab test",
+          orderedBy: lab.orderedBy || lab.OrderedBy || lab.doctorName || lab.DoctorName,
+          resultValue: lab.resultValue || lab.ResultValue || lab.value || lab.Value,
+          unit: lab.unit || lab.Unit,
+          referenceRange: lab.referenceRange || lab.ReferenceRange,
+          status: lab.status || lab.Status || "Final",
+          resultDate: lab.resultDate || lab.ResultDate || lab.createdAt || lab.CreatedAt || new Date().toISOString(),
+          notes: lab.notes || lab.Notes,
+        })));
+      } catch {
+        setLabResults([]);
+      }
 
       // Fetch notifications
       const notifs = await request(`/notifications/patient/${user?.profileId}`);
@@ -252,6 +283,16 @@ export const PatientPortal: React.FC = () => {
               <Clipboard size={16} />
               Medical Records
             </button>
+            <button onClick={() => setActiveTab("labs")} style={{
+              padding: "12px 24px", fontSize: "0.9rem", fontWeight: 600, border: "none", cursor: "pointer",
+              background: "transparent",
+              color: activeTab === "labs" ? "var(--success)" : "var(--text-secondary)",
+              borderBottom: activeTab === "labs" ? "2px solid var(--success)" : "2px solid transparent",
+              display: "flex", alignItems: "center", gap: "8px", transition: "all 0.2s"
+            }}>
+              <FlaskConical size={16} />
+              Lab Results
+            </button>
           </div>
 
           {/* Notifications Inbox */}
@@ -363,6 +404,48 @@ export const PatientPortal: React.FC = () => {
                   ))
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Lab Results */}
+          {activeTab === "labs" && (
+            <div className="glass-panel" style={{ padding: "24px", borderTopLeftRadius: 0 }}>
+              {labResults.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "50px 0" }}>
+                  <FlaskConical size={40} style={{ color: "var(--text-muted)", marginBottom: "12px" }} />
+                  <p style={{ color: "var(--text-muted)" }}>No lab results are available for this patient yet.</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  {labResults.map((lab) => (
+                    <div key={lab.id} style={{
+                      padding: "18px", borderRadius: "12px",
+                      background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.05)",
+                      display: "grid", gridTemplateColumns: "1.5fr 1fr auto", gap: "16px", alignItems: "center"
+                    }}>
+                      <div>
+                        <h4 style={{ fontSize: "0.95rem", fontWeight: 700 }}>{lab.testName}</h4>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                          {lab.orderedBy ? `Ordered by ${lab.orderedBy} - ` : ""}
+                          {new Date(lab.resultDate).toLocaleDateString()}
+                        </span>
+                        {lab.notes && <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "6px" }}>{lab.notes}</p>}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "1rem", fontWeight: 700 }}>
+                          {lab.resultValue || "Pending"} {lab.unit || ""}
+                        </div>
+                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                          Ref: {lab.referenceRange || "Not specified"}
+                        </span>
+                      </div>
+                      <span className={`badge ${lab.status.toLowerCase() === "critical" ? "badge-danger" : lab.status.toLowerCase() === "abnormal" ? "badge-warning" : "badge-success"}`}>
+                        {lab.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
