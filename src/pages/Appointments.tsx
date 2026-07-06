@@ -146,9 +146,19 @@ export const Appointments: React.FC = () => {
     : doctors.filter(d => (d.specialization || d.Specialization) === selectedSpec);
 
   return (
-    <div className="animate-fade-in" style={{ display: "grid", gap: "30px" }}>
-
-
+    <div className="animate-fade-in page-shell">
+      <div className="glass-panel" style={{ padding: "22px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
+            <ClipboardList size={18} style={{ color: "var(--accent-purple)" }} />
+            <h2 style={{ fontSize: "1.1rem" }}>Appointment Center</h2>
+          </div>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+            Manage bookings, consultations, and visit updates in one streamlined workspace.
+          </p>
+        </div>
+        <span className="badge badge-info">Live scheduling</span>
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: isPatient ? "1fr 1fr" : "1fr", gap: "30px" }}>
       
@@ -255,12 +265,13 @@ export const Appointments: React.FC = () => {
                   key={appId} 
                   style={{
                     padding: "20px",
-                    borderRadius: "12px",
-                    background: "rgba(255, 255, 255, 0.02)",
-                    border: "1px solid rgba(255, 255, 255, 0.05)",
+                    borderRadius: "16px",
+                    background: "linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02))",
+                    border: "1px solid var(--panel-border)",
                     display: "flex",
                     flexDirection: "column",
-                    gap: "14px"
+                    gap: "14px",
+                    boxShadow: "0 10px 24px rgba(2, 6, 23, 0.12)"
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
