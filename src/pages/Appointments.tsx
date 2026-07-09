@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
+import { HubConnectionBuilder } from "@microsoft/signalr";
 import { request } from "../services/api";
-import { Calendar, Check, Ban, Plus, Clock, ClipboardList } from "lucide-react";
+import { Calendar, Check, Ban, Plus, Clock, ClipboardList, RefreshCw, Bell } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 
@@ -28,6 +29,9 @@ export const Appointments: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [slotConflictWarning, setSlotConflictWarning] = useState<string | null>(null);
+  const [reschedulingAppId, setReschedulingAppId] = useState<number | null>(null);
+  const [newAppointmentDate, setNewAppointmentDate] = useState("");
 
   const isPatient = user?.role.toLowerCase() === "patient";
   const isDoctor = user?.role.toLowerCase() === "doctor";
@@ -68,6 +72,30 @@ export const Appointments: React.FC = () => {
 
   useEffect(() => {
     fetchAppointmentsAndDoctors();
+  }, []);
+
+  useEffect(() => {
+    const connection = new HubConnectionBuilder()
+      .withUrl("http://localhost:5050/hubs/hospital", {
+        accessTokenFactory: () => localStorage.getItem("shms_token") || ""
+      })
+      .withAutomaticReconnect()
+      .build();
+
+    connection.on("ReceiveMessage", () => {
+      fetchAppointmentsAndDoctors();
+    });
+
+    connection.on("AppointmentUpdated", () => {
+      fetchAppointmentsAndDoctors();
+      if (isPatient) {
+        setSlotConflictWarning("An appointment slot was just updated in real-time — verify your selected time is still available.");
+      }
+    });
+
+    connection.start().catch((err) => console.error("SignalR connection failed:", err));
+
+    return () => { connection.stop(); };
   }, []);
 
   const handleBookAppointment = async (e: React.FormEvent) => {
@@ -132,6 +160,25 @@ export const Appointments: React.FC = () => {
     }
   };
 
+  const handleRescheduleAppointment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reschedulingAppId || !newAppointmentDate) return;
+    try {
+      setError(null);
+      setSuccess(null);
+      await request(`/appointments/${reschedulingAppId}/reschedule`, {
+        method: "PUT",
+        body: JSON.stringify({ appointmentDate: new Date(newAppointmentDate).toISOString() })
+      });
+      setSuccess("Appointment rescheduled successfully.");
+      setReschedulingAppId(null);
+      setNewAppointmentDate("");
+      fetchAppointmentsAndDoctors();
+    } catch (err: any) {
+      setError(err.message || "Failed to reschedule appointment.");
+    }
+  };
+
   if (isLoading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "80vh" }}>
@@ -144,6 +191,29 @@ export const Appointments: React.FC = () => {
   const filteredDoctors = selectedSpec === "All" 
     ? doctors 
     : doctors.filter(d => (d.specialization || d.Specialization) === selectedSpec);
+
+  const upcomingReminders = isPatient
+    ? appointments
+        .filter(a => {
+          const status = (a.status || a.Status || "").toLowerCase();
+          const date = new Date(a.appointmentDate || a.AppointmentDate);
+          return status === "scheduled" && date > new Date();
+        })
+        .sort((a, b) =>
+          new Date(a.appointmentDate || a.AppointmentDate).getTime() -
+          new Date(b.appointmentDate || b.AppointmentDate).getTime()
+        )
+    : [];
+
+  const getTimeUntil = (dateStr: string): string => {
+    const diff = new Date(dateStr).getTime() - Date.now();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    if (days > 1) return `In ${days} days`;
+    if (days === 1) return "Tomorrow";
+    if (hours > 0) return `In ${hours} hours`;
+    return "Very soon";
+  };
 
   return (
     <div className="animate-fade-in" style={{ display: "grid", gap: "30px" }}>
@@ -162,6 +232,21 @@ export const Appointments: React.FC = () => {
         {success && (
           <div className="badge-success" style={{ padding: "12px", borderRadius: "8px", marginBottom: "10px" }}>
             <span>{success}</span>
+          </div>
+        )}
+        {slotConflictWarning && (
+          <div
+            className="badge-warning"
+            style={{ padding: "12px", borderRadius: "8px", marginBottom: "10px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}
+          >
+            <span>{slotConflictWarning}</span>
+            <button
+              type="button"
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", lineHeight: 1, color: "inherit" }}
+              onClick={() => setSlotConflictWarning(null)}
+            >
+              ✕
+            </button>
           </div>
         )}
       </div>
@@ -297,7 +382,7 @@ export const Appointments: React.FC = () => {
 
                   {/* Action buttons */}
                   {status.toLowerCase() === "scheduled" && (
-                    <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                    <div style={{ display: "flex", gap: "10px", marginTop: "10px", flexWrap: "wrap" }}>
                       {/* Doctor Complete Consult button */}
                       {isDoctor && (
                         <button 
@@ -311,6 +396,21 @@ export const Appointments: React.FC = () => {
                         >
                           <Check size={14} />
                           <span>Close Consultation</span>
+                        </button>
+                      )}
+
+                      {/* Reschedule button (patient only) */}
+                      {isPatient && (
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: "8px 14px", fontSize: "0.8rem", display: "flex", gap: "4px" }}
+                          onClick={() => {
+                            setReschedulingAppId(appId);
+                            setNewAppointmentDate("");
+                          }}
+                        >
+                          <RefreshCw size={14} />
+                          <span>Reschedule</span>
                         </button>
                       )}
 
@@ -442,7 +542,98 @@ export const Appointments: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Reschedule Appointment Modal */}
+      {reschedulingAppId && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          background: "rgba(0, 0, 0, 0.6)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 200
+        }}>
+          <div className="glass-panel" style={{ padding: "30px", width: "100%", maxWidth: "440px" }}>
+            <h3 style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
+              <RefreshCw style={{ color: "var(--accent-secondary)" }} />
+              <span>Reschedule Appointment</span>
+            </h3>
+            <form onSubmit={handleRescheduleAppointment} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <label>New Appointment Date & Time</label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={newAppointmentDate}
+                  onChange={(e) => setNewAppointmentDate(e.target.value)}
+                />
+              </div>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "10px" }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setReschedulingAppId(null)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Confirm Reschedule
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       </div>
+
+      {/* Upcoming Appointment Reminders (patient only) */}
+      {upcomingReminders.length > 0 && (
+        <div className="glass-panel" style={{ padding: "30px" }}>
+          <h3 style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
+            <Bell style={{ color: "var(--accent-warning, #f59e0b)" }} />
+            <span>Upcoming Appointment Reminders</span>
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {upcomingReminders.map((app) => {
+              const appId = app.id || app.Id;
+              const appDate = new Date(app.appointmentDate || app.AppointmentDate);
+              const timeUntil = getTimeUntil(app.appointmentDate || app.AppointmentDate);
+              return (
+                <div
+                  key={appId}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "14px 18px",
+                    borderRadius: "10px",
+                    background: "rgba(245, 158, 11, 0.08)",
+                    border: "1px solid rgba(245, 158, 11, 0.25)",
+                    gap: "16px"
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <span style={{ fontWeight: 600, fontSize: "0.95rem" }}>
+                      Dr. {app.doctor?.user?.fullName || "Doctor"}
+                    </span>
+                    <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <Clock size={12} />
+                      {appDate.toLocaleString()}
+                    </span>
+                  </div>
+                  <span className="badge badge-warning" style={{ whiteSpace: "nowrap", fontWeight: 700 }}>
+                    {timeUntil}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
