@@ -126,15 +126,14 @@ export const Billing: React.FC = () => {
       setIsLoading(true);
       setError(null);
 
-      const billQuery = isPatient ? `?patientId=${user?.profileId}` : "";
-      const billsData = await request(`/billing${billQuery}`);
+      const billsData = await request(isPatient ? `/billing/patient/${user?.profileId}` : "/billing");
       setBills(billsData);
 
       if (canManage) {
         const [patientsData, servicesData, expensesData, statsData] = await Promise.all([
           request("/patients"),
           request("/billing/services"),
-          request("/expenses"),
+          request("/billing/expenses"),
           request("/billing/stats"),
         ]);
 
