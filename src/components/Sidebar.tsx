@@ -13,6 +13,7 @@ import {
   Bell,
   Search,
   UserCog,
+  FileText,
 } from "lucide-react";
 
 export const Sidebar: React.FC = () => {
@@ -106,6 +107,15 @@ export const Sidebar: React.FC = () => {
               <NavLink to="/users" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <UserCog size={18} />
                 <span>User Management</span>
+              </NavLink>
+            </li>
+          )}
+
+          {(isAdmin || isDoctor) && (
+            <li className="nav-link-item">
+              <NavLink to="/correction-requests" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <FileText size={18} />
+                <span>Record Corrections</span>
               </NavLink>
             </li>
           )}

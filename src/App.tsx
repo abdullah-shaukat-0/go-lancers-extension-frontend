@@ -15,6 +15,7 @@ import CareInstructions from "./pages/CareInstructions";
 import PatientNotificationsPage from "./pages/PatientNotifications";
 import PatientLookup from "./pages/PatientLookup";
 import UserManagement from "./pages/UserManagement";
+import CorrectionRequests from "./pages/CorrectionRequests";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PatientAssistant from "./components/PatientAssistant";
 import { MessageSquare } from "lucide-react";
@@ -34,6 +35,7 @@ const AppContent: React.FC = () => {
       case "/billing": return "Invoicing & Financial Ledger";
       case "/patient-portal": return "Personal Patient Care Portal";
       case "/patient-lookup": return "Patient Lookup";
+      case "/correction-requests": return "Patient Correction Requests";
       case "/users": return "User Management";
       case "/care-instructions": return "Care Instructions & Delegation";
       case "/notifications": return "Patient Notifications";
@@ -90,6 +92,11 @@ const AppContent: React.FC = () => {
               {/* Doctor Only */}
               <Route element={<ProtectedRoute allowedRoles={["Doctor"]} />}>
                 <Route path="/patient-lookup" element={<PatientLookup />} />
+              </Route>
+
+              {/* Admin & Doctor Only */}
+              <Route element={<ProtectedRoute allowedRoles={["Admin", "Doctor"]} />}>
+                <Route path="/correction-requests" element={<CorrectionRequests />} />
               </Route>
 
               {/* Admin Only */}
