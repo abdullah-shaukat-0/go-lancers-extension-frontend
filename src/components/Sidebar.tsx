@@ -11,6 +11,7 @@ import {
   UserSquare2,
   ClipboardList,
   Bell,
+  Shield,
 } from "lucide-react";
 
 export const Sidebar: React.FC = () => {
@@ -115,7 +116,15 @@ export const Sidebar: React.FC = () => {
               </NavLink>
             </li>
           )}
-        </ul>
+          {/* Audit Logs — Admin only */}
+          {isAdmin && (
+            <li className="nav-link-item">
+              <NavLink to="/audit-logs" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <Shield size={18} />
+                <span>Audit Logs</span>
+              </NavLink>
+            </li>
+          )}        </ul>
       </nav>
 
       <div className="user-badge">
