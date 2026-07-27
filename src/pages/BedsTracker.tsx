@@ -86,13 +86,22 @@ export const BedsTracker: React.FC = () => {
     );
   }
 
-  // Group beds by Ward Type
+  // Group beds by Ward Type, sorted by room number ascending within each ward
   const wards = beds.reduce((acc: { [key: string]: any[] }, bed) => {
     const ward = bed.wardType || bed.WardType || "General";
     if (!acc[ward]) acc[ward] = [];
     acc[ward].push(bed);
     return acc;
   }, {});
+
+  // Sort each ward's beds by room number ascending (101, 102, 103...)
+  Object.keys(wards).forEach((ward) => {
+    wards[ward].sort((a: any, b: any) => {
+      const numA = parseInt(a.roomNumber || a.RoomNumber || "0", 10);
+      const numB = parseInt(b.roomNumber || b.RoomNumber || "0", 10);
+      return numA - numB;
+    });
+  });
 
   return (
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "30px" }}>

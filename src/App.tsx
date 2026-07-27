@@ -15,10 +15,13 @@ import CareInstructions from "./pages/CareInstructions";
 import PatientNotificationsPage from "./pages/PatientNotifications";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PatientAssistant from "./components/PatientAssistant";
+import SessionTimeoutModal from "./components/SessionTimeoutModal";
+import AuditLog from "./pages/AuditLog";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import { MessageSquare } from "lucide-react";
 
 const AppContent: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout, showTimeoutWarning, timeoutRemainingSeconds, extendSession } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -33,6 +36,8 @@ const AppContent: React.FC = () => {
       case "/patient-portal": return "Personal Patient Care Portal";
       case "/care-instructions": return "Care Instructions & Delegation";
       case "/notifications": return "Patient Notifications";
+      case "/audit-log": return "PHIPA Security Audit Trails";
+      case "/privacy-policy": return "PHIPA Policy Document";
       default: return "Smart Healthcare Management System";
     }
   };
@@ -88,9 +93,15 @@ const AppContent: React.FC = () => {
                 <Route path="/inventory" element={<Inventory />} />
               </Route>
 
+              {/* Admin Only */}
+              <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
+                <Route path="/audit-log" element={<AuditLog />} />
+              </Route>
+
               {/* Shared Protected Pages */}
               <Route path="/appointments" element={<Appointments />} />
               <Route path="/billing" element={<Billing />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             </Route>
 
             {/* Fallback */}
@@ -123,6 +134,14 @@ const AppContent: React.FC = () => {
             </button>
           )}
         </div>
+      )}
+      {/* Session Timeout Warning Modal — shown to all authenticated staff */}
+      {user && showTimeoutWarning && (
+        <SessionTimeoutModal
+          remainingSeconds={timeoutRemainingSeconds}
+          onExtend={extendSession}
+          onLogout={() => { logout(); navigate("/login", { replace: true }); }}
+        />
       )}
     </div>
   );

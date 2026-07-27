@@ -24,6 +24,7 @@ export const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showMfaModal, setShowMfaModal] = useState(false);
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -34,7 +35,8 @@ export const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5050/api/auth/login", {
+      // Note: backend port is 5051 (HTTPS)
+      const response = await fetch("https://localhost:5051/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -44,6 +46,11 @@ export const Login: React.FC = () => {
 
       if (!response.ok) {
         throw new Error(data.message || data.Message || "Login failed");
+      }
+
+      if (data.mfaRequired) {
+        setShowMfaModal(true);
+        return;
       }
 
       const session: UserSession = {
@@ -66,6 +73,16 @@ export const Login: React.FC = () => {
       setError(err.message || "Invalid username or password");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleMfaSuccess = (token: string, session: UserSession) => {
+    setShowMfaModal(false);
+    login(token, session);
+    if (session.role.toLowerCase() === "patient") {
+      navigate("/patient-portal");
+    } else {
+      navigate("/dashboard");
     }
   };
 
@@ -333,8 +350,19 @@ export const Login: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {showMfaModal && (
+        <MfaModal
+          username={username}
+          onVerifySuccess={handleMfaSuccess}
+          onClose={() => setShowMfaModal(false)}
+        />
+      )}
     </div>
   );
 };
+
+// Import MfaModal at the bottom (or top) to resolve the reference
+import MfaModal from "../components/MfaModal";
 
 export default Login;

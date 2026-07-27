@@ -90,13 +90,14 @@ export const Dashboard: React.FC = () => {
         }
 
         if (isDoctor && user?.profileId) {
-          const appointments = await request("/appointments");
           const doctors = await request("/doctors");
           setDoctorCount(doctors.length);
+          // Fetch only this doctor's appointments from the backend
+          const appointments = await request(`/appointments?doctorId=${user.profileId}`);
           const today = new Date().toDateString();
           const myAppts = appointments.filter((a: any) => {
             const apptDate = new Date(a.appointmentDate || a.AppointmentDate);
-            return a.doctorId === user.profileId && apptDate.toDateString() === today;
+            return apptDate.toDateString() === today;
           });
           setMyAppointmentsToday(myAppts);
           const instructions = await request(`/careinstructions/doctor/${user.profileId}`);

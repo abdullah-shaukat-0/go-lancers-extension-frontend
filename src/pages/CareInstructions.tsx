@@ -128,6 +128,25 @@ const CareInstructions: React.FC = () => {
           priority: form.priority,
         }),
       });
+
+      // Automatically send clinical email notification to patient (PHIPA requirement)
+      try {
+        await request("/notifications/send", {
+          method: "POST",
+          body: JSON.stringify({
+            patientId: Number(form.patientId),
+            senderId: user?.userId,
+            senderName: user?.fullName,
+            senderRole: user?.role,
+            subject: `New Care Plan Instructions - ${form.priority} Priority`,
+            message: `A new care plan instruction has been delegated by Dr. ${user?.fullName}: "${form.instructions}". Please log in to your patient portal to review details.`,
+            notificationType: "Clinical Alert"
+          })
+        });
+      } catch (notifyErr) {
+        console.error("Clinical notification email failed:", notifyErr);
+      }
+
       setForm({ patientId: "", nurseId: "", instructions: "", priority: "Medium" });
       setShowForm(false);
       fetchInstructions();

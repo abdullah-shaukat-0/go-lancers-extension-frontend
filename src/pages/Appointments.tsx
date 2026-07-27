@@ -103,10 +103,31 @@ export const Appointments: React.FC = () => {
     if (!completingAppId || !diagnosis || !prescription) return;
 
     try {
+      const appToComplete = appointments.find(a => a.id === completingAppId);
       await request(`/appointments/${completingAppId}/complete`, {
         method: "PUT",
         body: JSON.stringify({ diagnosis, prescription })
       });
+
+      // Send clinical alert to patient email about updated diagnosis & prescriptions (PHIPA)
+      if (appToComplete) {
+        try {
+          await request("/notifications/send", {
+            method: "POST",
+            body: JSON.stringify({
+              patientId: appToComplete.patientId,
+              senderId: user?.userId,
+              senderName: user?.fullName,
+              senderRole: user?.role,
+              subject: "Clinical Consultation Summary - Treatment Details",
+              message: `Your clinical appointment records have been updated by Dr. ${user?.fullName}. Diagnosis: "${diagnosis}". Prescribed Treatments: "${prescription}". Please log in to your patient portal for detailed instructions.`,
+              notificationType: "Clinical Alert"
+            })
+          });
+        } catch (notifyErr) {
+          console.error("Clinical notification email failed:", notifyErr);
+        }
+      }
 
       setSuccess("Consultation record updated and closed.");
       setCompletingAppId(null);
