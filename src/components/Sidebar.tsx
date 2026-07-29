@@ -11,7 +11,6 @@ import {
   UserSquare2,
   ClipboardList,
   Bell,
-  ShieldAlert,
   Shield,
 } from "lucide-react";
 
@@ -117,25 +116,15 @@ export const Sidebar: React.FC = () => {
               </NavLink>
             </li>
           )}
-
-          {/* Audit Log — Admin only */}
+          {/* Audit Logs — Admin only */}
           {isAdmin && (
             <li className="nav-link-item">
-              <NavLink to="/audit-log" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <ShieldAlert size={18} style={{ color: "var(--danger)" }} />
+              <NavLink to="/audit-logs" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <Shield size={18} />
                 <span>Audit Logs</span>
               </NavLink>
             </li>
-          )}
-
-          {/* Privacy Policy */}
-          <li className="nav-link-item">
-            <NavLink to="/privacy-policy" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <Shield size={18} />
-              <span>Privacy Policy</span>
-            </NavLink>
-          </li>
-        </ul>
+          )}        </ul>
       </nav>
 
       <div className="user-badge">

@@ -13,6 +13,7 @@ import Billing from "./pages/Billing";
 import PatientPortal from "./pages/PatientPortal";
 import CareInstructions from "./pages/CareInstructions";
 import PatientNotificationsPage from "./pages/PatientNotifications";
+import { AuditLogs } from "./pages/AuditLogs";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PatientAssistant from "./components/PatientAssistant";
 import SessionTimeoutModal from "./components/SessionTimeoutModal";
@@ -36,8 +37,7 @@ const AppContent: React.FC = () => {
       case "/patient-portal": return "Personal Patient Care Portal";
       case "/care-instructions": return "Care Instructions & Delegation";
       case "/notifications": return "Patient Notifications";
-      case "/audit-log": return "PHIPA Security Audit Trails";
-      case "/privacy-policy": return "PHIPA Policy Document";
+      case "/audit-logs": return "Audit Logs";
       default: return "Smart Healthcare Management System";
     }
   };
@@ -74,6 +74,11 @@ const AppContent: React.FC = () => {
               {/* Patient Only */}
               <Route element={<ProtectedRoute allowedRoles={["Patient"]} />}>
                 <Route path="/patient-portal" element={<PatientPortal />} />
+              </Route>
+
+              {/* Admin Only */}
+              <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
+                <Route path="/audit-logs" element={<AuditLogs />} />
               </Route>
 
               {/* Staff Only */}
