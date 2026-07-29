@@ -94,17 +94,25 @@ export const BedsTracker: React.FC = () => {
     return acc;
   }, {});
 
-  // Sort each ward's beds by room number ascending (101, 102, 103...)
-  Object.keys(wards).forEach((ward) => {
-    wards[ward].sort((a: any, b: any) => {
-      const numA = parseInt(a.roomNumber || a.RoomNumber || "0", 10);
-      const numB = parseInt(b.roomNumber || b.RoomNumber || "0", 10);
-      return numA - numB;
-    });
-  });
+  const totalBeds = beds.length;
+  const occupiedBeds = beds.filter((bed) => bed.isOccupied || bed.IsOccupied).length;
+  const availableBeds = totalBeds - occupiedBeds;
 
   return (
-    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
+    <div className="animate-fade-in page-shell">
+      <div className="glass-panel" style={{ padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+        <div>
+          <h2 style={{ fontSize: "1.1rem", marginBottom: "4px" }}>Bed Operations Overview</h2>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+            Coordinate ward occupancy and admissions from a single modern view.
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <span className="badge badge-info">{totalBeds} total</span>
+          <span className="badge badge-success">{availableBeds} available</span>
+          <span className="badge badge-warning">{occupiedBeds} occupied</span>
+        </div>
+      </div>
       
       {error && (
         <div className="badge-danger" style={{ padding: "12px", borderRadius: "8px" }}>
@@ -150,8 +158,8 @@ export const BedsTracker: React.FC = () => {
                   onClick={() => !occupied ? handleOpenAllocateModal(bed) : handleReleaseBed(bed)}
                   style={{
                     padding: "20px 15px",
-                    borderRadius: "12px",
-                    background: occupied ? "rgba(239, 68, 68, 0.08)" : "rgba(16, 185, 129, 0.08)",
+                    borderRadius: "18px",
+                    background: occupied ? "linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.05))" : "linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.05))",
                     border: `1px solid ${occupied ? "rgba(239, 68, 68, 0.25)" : "rgba(16, 185, 129, 0.25)"}`,
                     cursor: canManage ? "pointer" : "default",
                     transition: "all 0.2s ease",
@@ -159,7 +167,7 @@ export const BedsTracker: React.FC = () => {
                     flexDirection: "column",
                     alignItems: "center",
                     gap: "10px",
-                    boxShadow: occupied ? "none" : "0 4px 12px rgba(16, 185, 129, 0.05)"
+                    boxShadow: occupied ? "0 10px 24px rgba(239, 68, 68, 0.08)" : "0 10px 24px rgba(16, 185, 129, 0.08)"
                   }}
                   className="bed-card"
                 >

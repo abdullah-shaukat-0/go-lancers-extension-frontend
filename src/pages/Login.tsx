@@ -29,6 +29,73 @@ export const Login: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  setError(null);
+  setIsLoading(true);
+
+  try {
+    const response = await fetch(
+      "http://localhost:5050/api/auth/verify-mfa",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mfaToken,
+          code: otpCode,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Invalid verification code");
+    }
+
+    const session: UserSession = {
+      username: data.username,
+      fullName: data.fullName,
+      role: data.role,
+      userId: data.userId,
+      profileId: data.profileId,
+    };
+
+    login(data.token, session);
+
+    if (session.role.toLowerCase() === "patient") {
+      navigate("/patient-portal");
+    } else {
+      navigate("/dashboard");
+    }
+  } catch (err: any) {
+    setError(err.message || "Verification failed");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const handleResendCode = async () => {
+  try {
+    await fetch("http://localhost:5050/api/auth/resend-mfa", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        mfaToken,
+      }),
+    });
+
+    setSuccess("A new verification code has been sent to your email.");
+  } catch {
+    setError("Unable to resend verification code.");
+  }
+};
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -140,28 +207,33 @@ export const Login: React.FC = () => {
 
   return (
     <div style={{
-      display: "flex", 
-      justifyContent: "center", 
-      alignItems: "center", 
-      minHeight: "100vh", 
-      padding: "20px"
+      minHeight: "100vh",
+      padding: "24px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "radial-gradient(circle at top left, rgba(6, 182, 212, 0.14), transparent 28%), radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.14), transparent 34%)"
     }}>
       <div className="glass-panel animate-fade-in" style={{
         width: "100%",
-        maxWidth: "480px",
-        padding: "40px 30px",
-        position: "relative"
+        maxWidth: "520px",
+        padding: "36px 32px",
+        position: "relative",
+        borderRadius: "28px"
       }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "30px" }}>
-          <div className="brand-logo-icon" style={{ width: "50px", height: "50px", borderRadius: "12px", marginBottom: "15px" }}>
-            <HeartPulse size={28} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "22px" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+            <div className="brand-logo-icon" style={{ width: "50px", height: "50px", borderRadius: "14px", marginBottom: "12px" }}>
+              <HeartPulse size={28} />
+            </div>
+            <h2 style={{ fontSize: "1.7rem", marginBottom: "6px" }}>
+              {isRegistering ? "Create SHMS Account" : "Sign In to SHMS"}
+            </h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", textAlign: "left", lineHeight: 1.5 }}>
+              {isRegistering ? "Register your details to access healthcare services" : "Enter your hospital system credentials"}
+            </p>
           </div>
-          <h2 style={{ fontSize: "1.75rem", marginBottom: "6px" }}>
-            {isRegistering ? "Create SHMS Account" : "Sign In to SHMS"}
-          </h2>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem", textAlign: "center" }}>
-            {isRegistering ? "Register your details to access healthcare services" : "Enter your hospital system credentials"}
-          </p>
+          <span className="badge badge-info">Secure access</span>
         </div>
 
         {error && (
@@ -337,13 +409,15 @@ export const Login: React.FC = () => {
               setError(null);
               setSuccess(null);
             }} 
-            style={{ 
-              background: "none", 
-              border: "none", 
-              color: "var(--accent-secondary)", 
-              cursor: "pointer", 
+            className="btn btn-secondary"
+            style={{
+              background: "transparent",
+              border: "1px solid var(--panel-border)",
+              padding: "8px 14px",
+              color: "var(--accent-secondary)",
+              cursor: "pointer",
               fontSize: "0.875rem",
-              fontWeight: 500
+              fontWeight: 600
             }}
           >
             {isRegistering ? "Already have an account? Sign In" : "Need an account? Register Here"}

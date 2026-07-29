@@ -137,7 +137,19 @@ export const PatientPortal: React.FC = () => {
   }
 
   return (
-    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div className="animate-fade-in page-shell">
+      <div className="glass-panel" style={{ padding: "22px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
+            <HeartPulse size={18} style={{ color: "var(--accent-secondary)" }} />
+            <h2 style={{ fontSize: "1.1rem" }}>Patient Care Hub</h2>
+          </div>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+            Review your health profile, care updates, and completed consultations in one place.
+          </p>
+        </div>
+        <span className="badge badge-info">Personal view</span>
+      </div>
 
       {/* Messages */}
       {error && <div className="badge-danger" style={{ padding: "12px", borderRadius: "8px" }}>{error}</div>}
@@ -225,13 +237,12 @@ export const PatientPortal: React.FC = () => {
         {/* RIGHT: Tabbed — Notifications Inbox + Medical Records */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
           {/* Tab bar */}
-          <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: "0" }}>
+          <div style={{ display: "flex", border: "1px solid var(--panel-border)", borderRadius: "999px", padding: "4px", marginBottom: "0", background: "var(--surface-soft)", width: "fit-content" }}>
             <button onClick={() => setActiveTab("inbox")} style={{
-              padding: "12px 24px", fontSize: "0.9rem", fontWeight: 600, border: "none", cursor: "pointer",
-              background: "transparent",
+              padding: "10px 16px", fontSize: "0.9rem", fontWeight: 600, border: "none", cursor: "pointer",
+              background: activeTab === "inbox" ? "linear-gradient(135deg, rgba(13,148,136,0.2), rgba(6,182,212,0.16))" : "transparent",
               color: activeTab === "inbox" ? "var(--accent-secondary)" : "var(--text-secondary)",
-              borderBottom: activeTab === "inbox" ? "2px solid var(--accent-secondary)" : "2px solid transparent",
-              display: "flex", alignItems: "center", gap: "8px", transition: "all 0.2s", position: "relative"
+              borderRadius: "999px", display: "flex", alignItems: "center", gap: "8px", transition: "all 0.2s", position: "relative"
             }}>
               <Bell size={16} />
               Notifications Inbox
@@ -243,11 +254,10 @@ export const PatientPortal: React.FC = () => {
               )}
             </button>
             <button onClick={() => setActiveTab("records")} style={{
-              padding: "12px 24px", fontSize: "0.9rem", fontWeight: 600, border: "none", cursor: "pointer",
-              background: "transparent",
+              padding: "10px 16px", fontSize: "0.9rem", fontWeight: 600, border: "none", cursor: "pointer",
+              background: activeTab === "records" ? "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.16))" : "transparent",
               color: activeTab === "records" ? "var(--accent-purple)" : "var(--text-secondary)",
-              borderBottom: activeTab === "records" ? "2px solid var(--accent-purple)" : "2px solid transparent",
-              display: "flex", alignItems: "center", gap: "8px", transition: "all 0.2s"
+              borderRadius: "999px", display: "flex", alignItems: "center", gap: "8px", transition: "all 0.2s"
             }}>
               <Clipboard size={16} />
               Medical Records
