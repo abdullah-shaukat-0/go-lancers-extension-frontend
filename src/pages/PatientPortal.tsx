@@ -14,6 +14,8 @@ import {
   FileText,
   CheckCircle2,
   Clock,
+  FlaskConical,
+  XCircle,
 } from "lucide-react";
 
 interface PatientNotification {
@@ -30,6 +32,30 @@ interface PatientNotification {
   isEmailSent: boolean;
 }
 
+interface LabResult {
+  id: number;
+  testName: string;
+  orderedBy?: string;
+  resultValue?: string;
+  unit?: string;
+  referenceRange?: string;
+  status: string;
+  resultDate: string;
+  notes?: string;
+}
+
+interface CorrectionRequest {
+  id: number;
+  fieldName: string;
+  currentValue?: string;
+  requestedValue: string;
+  reason?: string;
+  status: "Pending" | "Approved" | "Rejected" | string;
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewNote?: string;
+}
+
 const TYPE_CONFIG: Record<string, { icon: React.ReactNode; color: string; bg: string; border: string; label: string }> = {
   Precaution: { icon: <AlertTriangle size={14} />, color: "#f97316", bg: "rgba(249,115,22,0.1)", border: "rgba(249,115,22,0.25)", label: "💊 Precaution" },
   Checkup:    { icon: <Calendar size={14} />, color: "#6366f1", bg: "rgba(99,102,241,0.1)", border: "rgba(99,102,241,0.25)", label: "📅 Checkup Reminder" },
@@ -37,22 +63,37 @@ const TYPE_CONFIG: Record<string, { icon: React.ReactNode; color: string; bg: st
   General:    { icon: <FileText size={14} />, color: "#06b6d4", bg: "rgba(6,182,212,0.1)", border: "rgba(6,182,212,0.25)", label: "📋 General" },
 };
 
+const CORRECTION_FIELDS = [
+  { value: "BloodGroup", label: "Blood Group" },
+  { value: "Gender", label: "Gender" },
+  { value: "DateOfBirth", label: "Date of Birth" },
+  { value: "MedicalHistory", label: "Medical History" },
+];
+
+const CORRECTION_STATUS_CONFIG: Record<string, { icon: React.ReactNode; className: string }> = {
+  Pending: { icon: <Clock size={12} />, className: "badge-warning" },
+  Approved: { icon: <CheckCircle2 size={12} />, className: "badge-success" },
+  Rejected: { icon: <XCircle size={12} />, className: "badge-danger" },
+};
+
 export const PatientPortal: React.FC = () => {
   const { user } = useAuth();
 
   const [patient, setPatient] = useState<any>(null);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [labResults, setLabResults] = useState<LabResult[]>([]);
   const [notifications, setNotifications] = useState<PatientNotification[]>([]);
+  const [correctionRequests, setCorrectionRequests] = useState<CorrectionRequest[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [expandedNotifId, setExpandedNotifId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<"records" | "inbox">("inbox");
+  const [activeTab, setActiveTab] = useState<"records" | "labs" | "inbox">("inbox");
 
-  // Edit mode
+  // Correction request form
   const [isEditing, setIsEditing] = useState(false);
-  const [bloodGroup, setBloodGroup] = useState("");
-  const [gender, setGender] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
-  const [medicalHistory, setMedicalHistory] = useState("");
+  const [correctionField, setCorrectionField] = useState("MedicalHistory");
+  const [requestedValue, setRequestedValue] = useState("");
+  const [correctionReason, setCorrectionReason] = useState("");
+  const [isSubmittingCorrection, setIsSubmittingCorrection] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,20 +106,38 @@ export const PatientPortal: React.FC = () => {
 
       const profile = await request(`/patients/${user?.profileId}`);
       setPatient(profile);
-      setBloodGroup(profile.bloodGroup || "O+");
-      setGender(profile.gender || "Male");
-      if (profile.dateOfBirth) {
-        setDateOfBirth(new Date(profile.dateOfBirth).toISOString().substring(0, 10));
-      }
-      setMedicalHistory(profile.medicalHistory || "");
 
       const appointments = await request(`/appointments?patientId=${user?.profileId}`);
       setPrescriptions(appointments.filter((app: any) => (app.status || app.Status).toLowerCase() === "completed"));
+
+      try {
+        const labs = await request(`/labresults?patientId=${user?.profileId}`);
+        setLabResults(labs.map((lab: any) => ({
+          id: lab.id || lab.Id,
+          testName: lab.testName || lab.TestName || lab.name || lab.Name || "Lab test",
+          orderedBy: lab.orderedBy || lab.OrderedBy || lab.doctorName || lab.DoctorName,
+          resultValue: lab.resultValue || lab.ResultValue || lab.value || lab.Value,
+          unit: lab.unit || lab.Unit,
+          referenceRange: lab.referenceRange || lab.ReferenceRange,
+          status: lab.status || lab.Status || "Final",
+          resultDate: lab.resultDate || lab.ResultDate || lab.createdAt || lab.CreatedAt || new Date().toISOString(),
+          notes: lab.notes || lab.Notes,
+        })));
+      } catch {
+        setLabResults([]);
+      }
 
       // Fetch notifications
       const notifs = await request(`/notifications/patient/${user?.profileId}`);
       setNotifications(notifs);
       setUnreadCount(notifs.filter((n: PatientNotification) => !n.isRead).length);
+
+      try {
+        const corrections = await request("/correctionrequests/my");
+        setCorrectionRequests(corrections);
+      } catch {
+        setCorrectionRequests([]);
+      }
 
     } catch (err: any) {
       console.error(err);
@@ -111,20 +170,39 @@ export const PatientPortal: React.FC = () => {
     }
   };
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
+  const getCurrentCorrectionValue = (fieldName: string) => {
+    if (!patient) return "";
+    if (fieldName === "BloodGroup") return patient.bloodGroup || "";
+    if (fieldName === "Gender") return patient.gender || "";
+    if (fieldName === "DateOfBirth") {
+      return patient.dateOfBirth ? new Date(patient.dateOfBirth).toISOString().substring(0, 10) : "";
+    }
+    return patient.medicalHistory || "";
+  };
+
+  const handleCorrectionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setError(null);
       setSuccess(null);
-      await request(`/patients/${user?.profileId}`, {
-        method: "PUT",
-        body: JSON.stringify({ bloodGroup, gender, dateOfBirth: new Date(dateOfBirth).toISOString(), medicalHistory }),
+      setIsSubmittingCorrection(true);
+      await request("/correctionrequests", {
+        method: "POST",
+        body: JSON.stringify({
+          fieldName: correctionField,
+          requestedValue,
+          reason: correctionReason,
+        }),
       });
-      setSuccess("Profile settings updated successfully.");
+      setSuccess("Correction request submitted for staff review.");
       setIsEditing(false);
+      setRequestedValue("");
+      setCorrectionReason("");
       fetchData();
     } catch (err: any) {
-      setError(err.message || "Failed to update profile settings.");
+      setError(err.message || "Failed to submit correction request.");
+    } finally {
+      setIsSubmittingCorrection(false);
     }
   };
 
@@ -165,42 +243,64 @@ export const PatientPortal: React.FC = () => {
               <span>Health ID Card</span>
             </h3>
             {!isEditing && (
-              <button className="btn btn-secondary" style={{ padding: "6px 10px" }} onClick={() => setIsEditing(true)}>
+              <button className="btn btn-secondary" style={{ padding: "6px 10px" }} onClick={() => {
+                setCorrectionField("MedicalHistory");
+                setRequestedValue(getCurrentCorrectionValue("MedicalHistory"));
+                setCorrectionReason("");
+                setIsEditing(true);
+              }}>
                 <Edit2 size={14} />
               </button>
             )}
           </div>
 
           {isEditing ? (
-            <form onSubmit={handleUpdateProfile} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <form onSubmit={handleCorrectionSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
               <div>
-                <label>Blood Group</label>
-                <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)}>
-                  {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
-                    <option key={bg} value={bg}>{bg}</option>
+                <label>Field to correct</label>
+                <select value={correctionField} onChange={(e) => {
+                  setCorrectionField(e.target.value);
+                  setRequestedValue(getCurrentCorrectionValue(e.target.value));
+                }}>
+                  {CORRECTION_FIELDS.map((field) => (
+                    <option key={field.value} value={field.value}>{field.label}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label>Gender</label>
-                <select value={gender} onChange={(e) => setGender(e.target.value)}>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
+                <label>Current value</label>
+                <div style={{ padding: "10px 12px", borderRadius: "8px", background: "rgba(0,0,0,0.15)", color: "var(--text-secondary)", fontSize: "0.86rem", whiteSpace: "pre-wrap" }}>
+                  {getCurrentCorrectionValue(correctionField) || "Not recorded"}
+                </div>
               </div>
               <div>
-                <label>Date of Birth</label>
-                <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
+                <label>Requested value</label>
+                {correctionField === "DateOfBirth" ? (
+                  <input required type="date" value={requestedValue} onChange={(e) => setRequestedValue(e.target.value)} />
+                ) : correctionField === "BloodGroup" ? (
+                  <select value={requestedValue} onChange={(e) => setRequestedValue(e.target.value)}>
+                    {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
+                      <option key={bg} value={bg}>{bg}</option>
+                    ))}
+                  </select>
+                ) : correctionField === "Gender" ? (
+                  <select value={requestedValue} onChange={(e) => setRequestedValue(e.target.value)}>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                ) : (
+                  <textarea required rows={4} value={requestedValue} onChange={(e) => setRequestedValue(e.target.value)} placeholder="Enter the corrected medical history..." />
+                )}
               </div>
               <div>
-                <label>Medical History Summary</label>
-                <textarea rows={3} value={medicalHistory} onChange={(e) => setMedicalHistory(e.target.value)} placeholder="e.g. Hypertension, Diabetes..." />
+                <label>Reason for correction</label>
+                <textarea rows={3} value={correctionReason} onChange={(e) => setCorrectionReason(e.target.value)} placeholder="Explain why this record should be corrected." />
               </div>
               <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "10px" }}>
                 <button type="button" className="btn btn-secondary" style={{ padding: "6px 12px" }} onClick={() => setIsEditing(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ padding: "6px 12px", display: "flex", gap: "4px" }}>
-                  <Check size={14} /><span>Save</span>
+                <button type="submit" className="btn btn-primary" disabled={isSubmittingCorrection} style={{ padding: "6px 12px", display: "flex", gap: "4px" }}>
+                  <Check size={14} /><span>{isSubmittingCorrection ? "Submitting..." : "Submit Request"}</span>
                 </button>
               </div>
             </form>
@@ -232,6 +332,38 @@ export const PatientPortal: React.FC = () => {
               </div>
             </div>
           )}
+
+          <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--panel-border)" }}>
+            <h4 style={{ fontSize: "0.95rem", marginBottom: "12px" }}>Correction Requests</h4>
+            {correctionRequests.length === 0 ? (
+              <p style={{ color: "var(--text-secondary)", fontSize: "0.82rem" }}>No correction requests submitted.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxHeight: "280px", overflow: "auto", paddingRight: "4px" }}>
+                {correctionRequests.map((requestItem) => {
+                  const statusConfig = CORRECTION_STATUS_CONFIG[requestItem.status] || CORRECTION_STATUS_CONFIG.Pending;
+                  const label = CORRECTION_FIELDS.find((field) => field.value === requestItem.fieldName)?.label || requestItem.fieldName;
+
+                  return (
+                    <div key={requestItem.id} style={{ padding: "12px", borderRadius: "8px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--panel-border)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "center" }}>
+                        <strong style={{ fontSize: "0.86rem" }}>{label}</strong>
+                        <span className={`badge ${statusConfig.className}`} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                          {statusConfig.icon}
+                          {requestItem.status}
+                        </span>
+                      </div>
+                      <p style={{ color: "var(--text-secondary)", fontSize: "0.78rem", marginTop: "6px" }}>
+                        Submitted {new Date(requestItem.submittedAt).toLocaleDateString()}
+                      </p>
+                      {requestItem.reviewNote && (
+                        <p style={{ color: "var(--text-secondary)", fontSize: "0.78rem", marginTop: "6px" }}>Note: {requestItem.reviewNote}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* RIGHT: Tabbed — Notifications Inbox + Medical Records */}
@@ -261,6 +393,16 @@ export const PatientPortal: React.FC = () => {
             }}>
               <Clipboard size={16} />
               Medical Records
+            </button>
+            <button onClick={() => setActiveTab("labs")} style={{
+              padding: "12px 24px", fontSize: "0.9rem", fontWeight: 600, border: "none", cursor: "pointer",
+              background: "transparent",
+              color: activeTab === "labs" ? "var(--success)" : "var(--text-secondary)",
+              borderBottom: activeTab === "labs" ? "2px solid var(--success)" : "2px solid transparent",
+              display: "flex", alignItems: "center", gap: "8px", transition: "all 0.2s"
+            }}>
+              <FlaskConical size={16} />
+              Lab Results
             </button>
           </div>
 
@@ -373,6 +515,48 @@ export const PatientPortal: React.FC = () => {
                   ))
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Lab Results */}
+          {activeTab === "labs" && (
+            <div className="glass-panel" style={{ padding: "24px", borderTopLeftRadius: 0 }}>
+              {labResults.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "50px 0" }}>
+                  <FlaskConical size={40} style={{ color: "var(--text-muted)", marginBottom: "12px" }} />
+                  <p style={{ color: "var(--text-muted)" }}>No lab results are available for this patient yet.</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  {labResults.map((lab) => (
+                    <div key={lab.id} style={{
+                      padding: "18px", borderRadius: "12px",
+                      background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.05)",
+                      display: "grid", gridTemplateColumns: "1.5fr 1fr auto", gap: "16px", alignItems: "center"
+                    }}>
+                      <div>
+                        <h4 style={{ fontSize: "0.95rem", fontWeight: 700 }}>{lab.testName}</h4>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                          {lab.orderedBy ? `Ordered by ${lab.orderedBy} - ` : ""}
+                          {new Date(lab.resultDate).toLocaleDateString()}
+                        </span>
+                        {lab.notes && <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "6px" }}>{lab.notes}</p>}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "1rem", fontWeight: 700 }}>
+                          {lab.resultValue || "Pending"} {lab.unit || ""}
+                        </div>
+                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                          Ref: {lab.referenceRange || "Not specified"}
+                        </span>
+                      </div>
+                      <span className={`badge ${lab.status.toLowerCase() === "critical" ? "badge-danger" : lab.status.toLowerCase() === "abnormal" ? "badge-warning" : "badge-success"}`}>
+                        {lab.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

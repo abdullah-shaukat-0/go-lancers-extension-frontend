@@ -11,7 +11,9 @@ import {
   UserSquare2,
   ClipboardList,
   Bell,
-  Shield,
+  Search,
+  UserCog,
+  FileText,
 } from "lucide-react";
 
 export const Sidebar: React.FC = () => {
@@ -39,7 +41,6 @@ export const Sidebar: React.FC = () => {
 
       <nav style={{ flex: 1 }}>
         <ul className="nav-links">
-          {/* Dashboard — Staff only */}
           {!isPatient && (
             <li className="nav-link-item">
               <NavLink to="/dashboard" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -49,7 +50,6 @@ export const Sidebar: React.FC = () => {
             </li>
           )}
 
-          {/* Patient Portal — Patient only */}
           {isPatient && (
             <li className="nav-link-item">
               <NavLink to="/patient-portal" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -59,7 +59,6 @@ export const Sidebar: React.FC = () => {
             </li>
           )}
 
-          {/* Appointments — All */}
           <li className="nav-link-item">
             <NavLink to="/appointments" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <Calendar size={18} />
@@ -67,7 +66,6 @@ export const Sidebar: React.FC = () => {
             </NavLink>
           </li>
 
-          {/* Bed Tracker — Staff */}
           {!isPatient && (
             <li className="nav-link-item">
               <NavLink to="/beds" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -77,7 +75,15 @@ export const Sidebar: React.FC = () => {
             </li>
           )}
 
-          {/* Care Instructions — Doctor & Nurse */}
+          {isDoctor && (
+            <li className="nav-link-item">
+              <NavLink to="/patient-lookup" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <Search size={18} />
+                <span>Patient Lookup</span>
+              </NavLink>
+            </li>
+          )}
+
           {(isDoctor || isNurse) && (
             <li className="nav-link-item">
               <NavLink to="/care-instructions" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -87,7 +93,6 @@ export const Sidebar: React.FC = () => {
             </li>
           )}
 
-          {/* Patient Notifications — Doctor & Nurse */}
           {(isDoctor || isNurse) && (
             <li className="nav-link-item">
               <NavLink to="/notifications" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -97,7 +102,24 @@ export const Sidebar: React.FC = () => {
             </li>
           )}
 
-          {/* Pharmacy / Inventory — Admin & Nurse */}
+          {isAdmin && (
+            <li className="nav-link-item">
+              <NavLink to="/users" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <UserCog size={18} />
+                <span>User Management</span>
+              </NavLink>
+            </li>
+          )}
+
+          {(isAdmin || isDoctor) && (
+            <li className="nav-link-item">
+              <NavLink to="/correction-requests" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <FileText size={18} />
+                <span>Record Corrections</span>
+              </NavLink>
+            </li>
+          )}
+
           {(isAdmin || isNurse) && (
             <li className="nav-link-item">
               <NavLink to="/inventory" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -107,7 +129,6 @@ export const Sidebar: React.FC = () => {
             </li>
           )}
 
-          {/* Billing — Admin, Nurse, Patient */}
           {(isAdmin || isNurse || isPatient) && (
             <li className="nav-link-item">
               <NavLink to="/billing" className={({ isActive }) => isActive ? "active" : ""} style={{ display: "flex", alignItems: "center", gap: "12px" }}>

@@ -13,7 +13,9 @@ import Billing from "./pages/Billing";
 import PatientPortal from "./pages/PatientPortal";
 import CareInstructions from "./pages/CareInstructions";
 import PatientNotificationsPage from "./pages/PatientNotifications";
-import { AuditLogs } from "./pages/AuditLogs";
+import PatientLookup from "./pages/PatientLookup";
+import UserManagement from "./pages/UserManagement";
+import CorrectionRequests from "./pages/CorrectionRequests";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PatientAssistant from "./components/PatientAssistant";
 import SessionTimeoutModal from "./components/SessionTimeoutModal";
@@ -35,6 +37,9 @@ const AppContent: React.FC = () => {
       case "/appointments": return "Appointments Desk";
       case "/billing": return "Invoicing & Financial Ledger";
       case "/patient-portal": return "Personal Patient Care Portal";
+      case "/patient-lookup": return "Patient Lookup";
+      case "/correction-requests": return "Patient Correction Requests";
+      case "/users": return "User Management";
       case "/care-instructions": return "Care Instructions & Delegation";
       case "/notifications": return "Patient Notifications";
       case "/audit-logs": return "Audit Logs";
@@ -91,6 +96,21 @@ const AppContent: React.FC = () => {
               <Route element={<ProtectedRoute allowedRoles={["Doctor", "Nurse"]} />}>
                 <Route path="/care-instructions" element={<CareInstructions />} />
                 <Route path="/notifications" element={<PatientNotificationsPage />} />
+              </Route>
+
+              {/* Doctor Only */}
+              <Route element={<ProtectedRoute allowedRoles={["Doctor"]} />}>
+                <Route path="/patient-lookup" element={<PatientLookup />} />
+              </Route>
+
+              {/* Admin & Doctor Only */}
+              <Route element={<ProtectedRoute allowedRoles={["Admin", "Doctor"]} />}>
+                <Route path="/correction-requests" element={<CorrectionRequests />} />
+              </Route>
+
+              {/* Admin Only */}
+              <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
+                <Route path="/users" element={<UserManagement />} />
               </Route>
 
               {/* Admin & Nurse Only */}
