@@ -3,11 +3,12 @@ import { ShieldCheck, ArrowRight, RefreshCw, X } from "lucide-react";
 
 interface MfaModalProps {
   username: string;
+  verificationToken: string;
   onVerifySuccess: (token: string, sessionData: any) => void;
   onClose: () => void;
 }
 
-export const MfaModal: React.FC<MfaModalProps> = ({ username, onVerifySuccess, onClose }) => {
+export const MfaModal: React.FC<MfaModalProps> = ({ username, verificationToken, onVerifySuccess, onClose }) => {
   const [codeDigits, setCodeDigits] = useState<string[]>(Array(6).fill(""));
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -87,7 +88,7 @@ export const MfaModal: React.FC<MfaModalProps> = ({ username, onVerifySuccess, o
       const response = await fetch("https://localhost:5051/api/auth/verify-mfa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, code: fullCode }),
+        body: JSON.stringify({ verificationToken, code: fullCode }),
       });
 
       const data = await response.json();
@@ -177,7 +178,7 @@ export const MfaModal: React.FC<MfaModalProps> = ({ username, onVerifySuccess, o
 
         <h2 style={{ fontSize: "1.4rem", fontWeight: 700, marginBottom: "8px" }}>2-Step Verification</h2>
         <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", lineHeight: 1.5, marginBottom: "24px" }}>
-          We sent a 6-digit clinical security code to your registered email address.
+          Enter the 6-digit clinical security code generated for {username}.
         </p>
 
         <form onSubmit={handleSubmit}>

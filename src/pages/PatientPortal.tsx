@@ -100,48 +100,71 @@ export const PatientPortal: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
+    let patientId = user?.profileId;
+
     try {
       setIsLoading(true);
       setError(null);
 
-      const profile = await request(`/patients/${user?.profileId}`);
+      const profile = await request("/patients/me");
       setPatient(profile);
+      patientId = profile.id || profile.Id || patientId;
+    } catch (err: any) {
+      console.error("Failed to fetch patient profile:", err);
+      setError(err.message || "Failed to fetch patient profile.");
+      setPatient(null);
+    }
 
-      const appointments = await request(`/appointments?patientId=${user?.profileId}`);
+    if (!patientId) {
+      setPrescriptions([]);
+      setLabResults([]);
+      setNotifications([]);
+      setUnreadCount(0);
+      setCorrectionRequests([]);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const appointments = await request(`/appointments?patientId=${patientId}`);
       setPrescriptions(appointments.filter((app: any) => (app.status || app.Status).toLowerCase() === "completed"));
+    } catch (err) {
+      console.error("Failed to fetch appointments:", err);
+      setPrescriptions([]);
+    }
 
-      try {
-        const labs = await request(`/labresults?patientId=${user?.profileId}`);
-        setLabResults(labs.map((lab: any) => ({
-          id: lab.id || lab.Id,
-          testName: lab.testName || lab.TestName || lab.name || lab.Name || "Lab test",
-          orderedBy: lab.orderedBy || lab.OrderedBy || lab.doctorName || lab.DoctorName,
-          resultValue: lab.resultValue || lab.ResultValue || lab.value || lab.Value,
-          unit: lab.unit || lab.Unit,
-          referenceRange: lab.referenceRange || lab.ReferenceRange,
-          status: lab.status || lab.Status || "Final",
-          resultDate: lab.resultDate || lab.ResultDate || lab.createdAt || lab.CreatedAt || new Date().toISOString(),
-          notes: lab.notes || lab.Notes,
-        })));
-      } catch {
-        setLabResults([]);
-      }
+    try {
+      const labs = await request(`/labresults?patientId=${patientId}`);
+      setLabResults(labs.map((lab: any) => ({
+        id: lab.id || lab.Id,
+        testName: lab.testName || lab.TestName || lab.name || lab.Name || "Lab test",
+        orderedBy: lab.orderedBy || lab.OrderedBy || lab.doctorName || lab.DoctorName,
+        resultValue: lab.resultValue || lab.ResultValue || lab.value || lab.Value,
+        unit: lab.unit || lab.Unit,
+        referenceRange: lab.referenceRange || lab.ReferenceRange,
+        status: lab.status || lab.Status || "Final",
+        resultDate: lab.resultDate || lab.ResultDate || lab.createdAt || lab.CreatedAt || new Date().toISOString(),
+        notes: lab.notes || lab.Notes,
+      })));
+    } catch {
+      setLabResults([]);
+    }
 
-      // Fetch notifications
-      const notifs = await request(`/notifications/patient/${user?.profileId}`);
+    try {
+      const notifs = await request(`/notifications/patient/${patientId}`);
       setNotifications(notifs);
       setUnreadCount(notifs.filter((n: PatientNotification) => !n.isRead).length);
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+      setNotifications([]);
+      setUnreadCount(0);
+    }
 
-      try {
-        const corrections = await request("/correctionrequests/my");
-        setCorrectionRequests(corrections);
-      } catch {
-        setCorrectionRequests([]);
-      }
-
-    } catch (err: any) {
-      console.error(err);
-      setError("Failed to fetch patient records.");
+    try {
+      const corrections = await request("/correctionrequests/my");
+      setCorrectionRequests(corrections);
+    } catch {
+      setCorrectionRequests([]);
     } finally {
       setIsLoading(false);
     }

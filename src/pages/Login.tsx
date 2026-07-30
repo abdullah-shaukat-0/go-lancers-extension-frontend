@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import type { UserSession } from "../context/AuthContext";
+import MfaModal from "../components/MfaModal";
 import { HeartPulse, KeyRound, User, Mail, ShieldAlert } from "lucide-react";
 
 export const Login: React.FC = () => {
@@ -25,76 +26,10 @@ export const Login: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showMfaModal, setShowMfaModal] = useState(false);
+  const [verificationToken, setVerificationToken] = useState("");
 
   const { login } = useAuth();
   const navigate = useNavigate();
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-  e.preventDefault();
-
-  setError(null);
-  setIsLoading(true);
-
-  try {
-    const response = await fetch(
-      "http://localhost:5050/api/auth/verify-mfa",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          mfaToken,
-          code: otpCode,
-        }),
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Invalid verification code");
-    }
-
-    const session: UserSession = {
-      username: data.username,
-      fullName: data.fullName,
-      role: data.role,
-      userId: data.userId,
-      profileId: data.profileId,
-    };
-
-    login(data.token, session);
-
-    if (session.role.toLowerCase() === "patient") {
-      navigate("/patient-portal");
-    } else {
-      navigate("/dashboard");
-    }
-  } catch (err: any) {
-    setError(err.message || "Verification failed");
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-const handleResendCode = async () => {
-  try {
-    await fetch("http://localhost:5050/api/auth/resend-mfa", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        mfaToken,
-      }),
-    });
-
-    setSuccess("A new verification code has been sent to your email.");
-  } catch {
-    setError("Unable to resend verification code.");
-  }
-};
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,7 +50,8 @@ const handleResendCode = async () => {
         throw new Error(data.message || data.Message || "Login failed");
       }
 
-      if (data.mfaRequired) {
+      if (data.requiresMfa || data.mfaRequired) {
+        setVerificationToken(data.verificationToken ?? "");
         setShowMfaModal(true);
         return;
       }
@@ -428,6 +364,7 @@ const handleResendCode = async () => {
       {showMfaModal && (
         <MfaModal
           username={username}
+          verificationToken={verificationToken}
           onVerifySuccess={handleMfaSuccess}
           onClose={() => setShowMfaModal(false)}
         />
@@ -435,8 +372,5 @@ const handleResendCode = async () => {
     </div>
   );
 };
-
-// Import MfaModal at the bottom (or top) to resolve the reference
-import MfaModal from "../components/MfaModal";
 
 export default Login;

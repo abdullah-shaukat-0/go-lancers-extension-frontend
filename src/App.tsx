@@ -19,7 +19,7 @@ import CorrectionRequests from "./pages/CorrectionRequests";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PatientAssistant from "./components/PatientAssistant";
 import SessionTimeoutModal from "./components/SessionTimeoutModal";
-import AuditLog from "./pages/AuditLog";
+import { AuditLogs } from "./pages/AuditLogs";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import { MessageSquare } from "lucide-react";
 
@@ -120,7 +120,7 @@ const AppContent: React.FC = () => {
 
               {/* Admin Only */}
               <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
-                <Route path="/audit-log" element={<AuditLog />} />
+                <Route path="/audit-log" element={<AuditLogs />} />
               </Route>
 
               {/* Shared Protected Pages */}
